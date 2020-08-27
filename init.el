@@ -17,6 +17,9 @@
 
 (add-hook 'elixir-mode-hook #'smartparens-mode)
 
+(add-hook 'elixir-mode-hook
+          (lambda () (add-hook 'before-save-hook 'elixir-format nil t)))
+
 (custom-set-variables
   '(package-selected-packages
     '(aggressive-indent smartparens neotree magit centaur-tabs elixir-mode)))
