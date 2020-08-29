@@ -21,7 +21,7 @@
           (lambda () (add-hook 'before-save-hook 'elixir-format nil t)))
 
 (require 'projectile)
-(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+(define-key projectile-mode-map (kbd "C-0") 'projectile-command-map)
 (projectile-mode +1)
 
 (custom-set-variables
