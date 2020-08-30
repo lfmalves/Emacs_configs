@@ -15,6 +15,8 @@
 
 (load-theme 'cyberpunk t)
 
+(add-hook 'prog-mode-hook 'linum-mode)
+
 (add-hook 'elixir-mode-hook #'smartparens-mode)
 
 (add-hook 'elixir-mode-hook
