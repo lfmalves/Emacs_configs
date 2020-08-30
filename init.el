@@ -20,6 +20,8 @@
 (add-hook 'elixir-mode-hook
           (lambda () (add-hook 'before-save-hook 'elixir-format nil t)))
 
+(add-hook 'after-init-hook 'global-company-mode)
+
 (require 'projectile)
 (define-key projectile-mode-map (kbd "C-0") 'projectile-command-map)
 (projectile-mode +1)
