@@ -1,26 +1,31 @@
-;; Initialize package sources
-(require 'package)
+;; Disable package auto-loading at startup (we manage it manually)
 (setq package-enable-at-startup nil)
+
+;; Initialize package system
+(require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (package-initialize)
 
+;; Ensure package archive contents are up-to-date
+(unless package-archive-contents
+  (package-refresh-contents))
+
 ;; Bootstrap use-package
 (unless (package-installed-p 'use-package)
-  (package-refresh-contents)
   (package-install 'use-package))
 (require 'use-package)
 (setq use-package-always-ensure t)
 
-;; Dark theme because we're not psychopaths
+;; Load theme after it's installed
 (use-package cyberpunk-theme
   :config
   (load-theme 'cyberpunk t))
 
-;; Neotree
+;; Neotree for file tree
 (use-package neotree
   :bind ("C-3" . neotree-toggle))
 
-;; Centaur Tabs
+;; Centaur Tabs for tab-style navigation
 (use-package centaur-tabs
   :init
   (setq centaur-tabs-style "bar"
@@ -31,57 +36,70 @@
   (("C-1" . centaur-tabs-backward)
    ("C-2" . centaur-tabs-forward)))
 
-;; Aggressive Indent
+;; Smartparens for structural editing
+(use-package smartparens
+  :hook ((elixir-mode emacs-lisp-mode ruby-mode python-mode) . smartparens-mode))
+
+;; Aggressive indent for clean code
 (use-package aggressive-indent
   :hook (prog-mode . global-aggressive-indent-mode)
   :config
   (add-to-list 'aggressive-indent-excluded-modes 'html-mode))
 
-;; Line Numbers
-(add-hook 'prog-mode-hook 'linum-mode)
+;; Show line numbers (modern alternative to linum-mode)
+(add-hook 'prog-mode-hook 'display-line-numbers-mode)
 
-;; Smartparens for structural editing
-(use-package smartparens
-  :hook ((elixir-mode emacs-lisp-mode ruby-mode python-mode) . smartparens-mode))
-
-;; Company-mode (auto-completion)
+;; Company-mode for autocompletion
 (use-package company
   :hook (after-init . global-company-mode))
 
-;; Projectile
+;; Projectile for project navigation
 (use-package projectile
   :init (setq projectile-keymap-prefix (kbd "C-0"))
   :config (projectile-mode +1)
   :bind (:map projectile-mode-map
               ("C-0" . projectile-command-map)))
 
-;; Magit
+;; Magit for Git integration
 (use-package magit :defer t)
 
 ;; === Elixir ===
 (use-package elixir-mode :defer t)
 (use-package alchemist :defer t)
+
 (add-hook 'elixir-mode-hook
           (lambda ()
-            (add-hook 'before-save-hook 'elixir-format nil t)))
+            (when (executable-find "mix")
+              (add-hook 'before-save-hook #'elixir-format nil t))))
 
 ;; === Python ===
-(use-package elpy
-  :init (elpy-enable)
-  :hook (elpy-mode . (lambda ()
-                       (setq python-shell-interpreter "python3")
-                       (add-hook 'before-save-hook #'elpy-black-fix-code nil t)))
-  :config
-  (setq elpy-rpc-python-command "python3"))
-
 (defun elpy-black-fix-code ()
   "Format current buffer with black."
   (interactive)
-  (when (executable-find "black")
-    (shell-command-to-string (format "black %s" (shell-quote-argument buffer-file-name)))
+  (when (and buffer-file-name (executable-find "black"))
+    (shell-command-to-string
+     (format "black %s" (shell-quote-argument buffer-file-name)))
     (revert-buffer t t t)))
 
+(use-package elpy
+  :init
+  (setq elpy-rpc-python-command "python3"
+        python-shell-interpreter "python3")
+  :config
+  (elpy-enable)
+  (add-hook 'elpy-mode-hook
+            (lambda ()
+              (add-hook 'before-save-hook #'elpy-black-fix-code nil t))))
+
 ;; === Ruby ===
+(defun rubocop-autocorrect-current-file ()
+  "Autocorrect current file with RuboCop."
+  (interactive)
+  (when (and buffer-file-name (executable-find "rubocop"))
+    (shell-command-to-string
+     (format "rubocop -A %s" (shell-quote-argument buffer-file-name)))
+    (revert-buffer t t t)))
+
 (use-package enh-ruby-mode
   :mode "\\.rb\\'"
   :interpreter "ruby"
@@ -90,14 +108,6 @@
                             (add-hook 'before-save-hook #'rubocop-autocorrect-current-file nil t)))))
 
 (use-package robe :defer t)
-
-(defun rubocop-autocorrect-current-file ()
-  "Autocorrect current file with RuboCop."
-  (interactive)
-  (when (executable-find "rubocop")
-    (shell-command-to-string
-     (format "rubocop -A %s" (shell-quote-argument buffer-file-name)))
-    (revert-buffer t t t)))
 
 ;; === Emacs Lisp ===
 (defun elisp-autoformat-buffer ()
