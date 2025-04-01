@@ -11,8 +11,10 @@
 (require 'use-package)
 (setq use-package-always-ensure t)
 
-;; Load theme early
-(load-theme 'cyberpunk t)
+;; Dark theme because we're not psychopaths
+(use-package cyberpunk-theme
+  :config
+  (load-theme 'cyberpunk t))
 
 ;; Neotree
 (use-package neotree
