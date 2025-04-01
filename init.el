@@ -1,6 +1,6 @@
 ;; Initialize package sources
 (require 'package)
-(setq package-enable-at-startup nil) ; Prevent double package loading
+(setq package-enable-at-startup nil)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (package-initialize)
 
@@ -11,7 +11,7 @@
 (require 'use-package)
 (setq use-package-always-ensure t)
 
-;; Load theme early for UI performance
+;; Load theme early
 (load-theme 'cyberpunk t)
 
 ;; Neotree
@@ -38,14 +38,9 @@
 ;; Line Numbers
 (add-hook 'prog-mode-hook 'linum-mode)
 
-;; Smartparens for Elixir
+;; Smartparens for structural editing
 (use-package smartparens
-  :hook (elixir-mode . smartparens-mode))
-
-;; Auto-format on save for Elixir
-(add-hook 'elixir-mode-hook
-          (lambda ()
-            (add-hook 'before-save-hook 'elixir-format nil t)))
+  :hook ((elixir-mode emacs-lisp-mode ruby-mode python-mode) . smartparens-mode))
 
 ;; Company-mode (auto-completion)
 (use-package company
@@ -58,15 +53,60 @@
   :bind (:map projectile-mode-map
               ("C-0" . projectile-command-map)))
 
-;; Optional: Magit
+;; Magit
 (use-package magit :defer t)
 
-;; Elixir mode and Alchemist
+;; === Elixir ===
 (use-package elixir-mode :defer t)
 (use-package alchemist :defer t)
+(add-hook 'elixir-mode-hook
+          (lambda ()
+            (add-hook 'before-save-hook 'elixir-format nil t)))
 
-;; Save selected packages
-(setq package-selected-packages
-      '(projectile alchemist aggressive-indent smartparens
-                   neotree magit centaur-tabs elixir-mode use-package))
+;; === Python ===
+(use-package elpy
+  :init (elpy-enable)
+  :hook (elpy-mode . (lambda ()
+                       (setq python-shell-interpreter "python3")
+                       (add-hook 'before-save-hook #'elpy-black-fix-code nil t)))
+  :config
+  (setq elpy-rpc-python-command "python3"))
 
+(defun elpy-black-fix-code ()
+  "Format current buffer with black."
+  (interactive)
+  (when (executable-find "black")
+    (shell-command-to-string (format "black %s" (shell-quote-argument buffer-file-name)))
+    (revert-buffer t t t)))
+
+;; === Ruby ===
+(use-package enh-ruby-mode
+  :mode "\\.rb\\'"
+  :interpreter "ruby"
+  :hook ((enh-ruby-mode . robe-mode)
+         (enh-ruby-mode . (lambda ()
+                            (add-hook 'before-save-hook #'rubocop-autocorrect-current-file nil t)))))
+
+(use-package robe :defer t)
+
+(defun rubocop-autocorrect-current-file ()
+  "Autocorrect current file with RuboCop."
+  (interactive)
+  (when (executable-find "rubocop")
+    (shell-command-to-string
+     (format "rubocop -A %s" (shell-quote-argument buffer-file-name)))
+    (revert-buffer t t t)))
+
+;; === Emacs Lisp ===
+(defun elisp-autoformat-buffer ()
+  "Auto-indent and clean up Emacs Lisp code."
+  (when (derived-mode-p 'emacs-lisp-mode)
+    (indent-region (point-min) (point-max))
+    (whitespace-cleanup)))
+
+(add-hook 'emacs-lisp-mode-hook
+          (lambda ()
+            (smartparens-mode 1)
+            (aggressive-indent-mode 1)
+            (company-mode 1)
+            (add-hook 'before-save-hook 'elisp-autoformat-buffer nil t)))
